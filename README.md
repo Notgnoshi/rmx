@@ -1,3 +1,3 @@
 # rmx
 
-Rust-style mutex for C++
+Rust-style mutex for C++17
