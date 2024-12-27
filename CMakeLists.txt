@@ -20,7 +20,6 @@ if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
     set(RMX_IS_MAIN_PROJECT ON)
 endif()
 
-option(RMX_BUILD_EXAMPLES "Enable building example applications" ${RMX_IS_MAIN_PROJECT})
 option(RMX_BUILD_TESTS "Enable building the project tests" ${RMX_IS_MAIN_PROJECT})
 # TODO: Maybe longer-running fuzz tests?
 
@@ -31,11 +30,6 @@ target_include_directories(
 )
 target_compile_features(rmx INTERFACE cxx_std_17)
 install(DIRECTORY include/rmx DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-
-if(RMX_BUILD_EXAMPLES)
-    message(STATUS "Building rmx examples")
-    add_subdirectory(examples)
-endif()
 
 if(RMX_BUILD_TESTS)
     message(STATUS "Building rmx tests")
