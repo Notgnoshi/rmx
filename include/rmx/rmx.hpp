@@ -3,6 +3,7 @@
 #include <mutex>
 #include <optional>
 #include <type_traits>
+#include <utility>
 
 namespace rmx {
 
@@ -17,6 +18,13 @@ class MutexGuard
         m_lock(std::move(lock)), m_ref(value_ref)
     {
     }
+
+    explicit MutexGuard(MutexGuard&&) noexcept = default;
+    MutexGuard& operator=(MutexGuard&&) noexcept = default;
+
+    //! A MutexGuard represents a locked value, which means it's incorrect to copy it around.
+    MutexGuard(const MutexGuard&) = delete;
+    MutexGuard& operator=(const MutexGuard&) = delete;
 
     //! Access the underlying value by reference
     //!
@@ -73,8 +81,8 @@ class Mutex
         std::unique_lock<MutexImplT> maybe_lock(m_mutex, std::try_to_lock);
         if (maybe_lock)
         {
-            auto guard = MutexGuard(m_value, std::move(maybe_lock));
-            return std::optional(std::move(guard));
+            return std::optional<MutexGuard<ValueT, MutexImplT>>(
+                std::in_place, m_value, std::move(maybe_lock));
         }
         return std::nullopt;
     }
