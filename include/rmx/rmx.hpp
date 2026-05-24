@@ -1,6 +1,5 @@
 #pragma once
 #include <chrono>
-#include <functional>
 #include <mutex>
 #include <optional>
 #include <type_traits>
@@ -39,10 +38,10 @@ class MutexGuard
 #endif
                         ) noexcept :
         m_lock(std::move(lock)),
-        m_ref(value_ref)
+        m_ref(&value_ref)
 #ifdef RMX_ENABLE_POISONING
         ,
-        m_was_poisoned(was_poisoned),
+        m_was_poisoned(&was_poisoned),
         m_uncaught_at_entry(std::uncaught_exceptions())
 #endif
     {
@@ -63,7 +62,7 @@ class MutexGuard
         {
             // TODO: A possible enhancement is to stash the thread::id or possibly the
             // exception.what() so that it can be referenced in the poison exception.
-            m_was_poisoned.get().store(true, std::memory_order_relaxed);
+            m_was_poisoned->store(true, std::memory_order_relaxed);
         }
     }
 #else
@@ -73,14 +72,14 @@ class MutexGuard
     //! Access the underlying value by reference
     //!
     //! @warning It is incorrect to store the reference returned by this operator.
-    [[nodiscard]] ValueT& operator*() noexcept { return m_ref; }
-    [[nodiscard]] const ValueT& operator*() const noexcept { return m_ref; }
+    [[nodiscard]] ValueT& operator*() noexcept { return *m_ref; }
+    [[nodiscard]] const ValueT& operator*() const noexcept { return *m_ref; }
 
     //! Access the underlying value by pointer
     //!
     //! @warning It is incorrect to store the pointer returned by this operator.
-    [[nodiscard]] ValueT* operator->() noexcept { return &m_ref.get(); }
-    [[nodiscard]] const ValueT* operator->() const noexcept { return &m_ref.get(); }
+    [[nodiscard]] ValueT* operator->() noexcept { return m_ref; }
+    [[nodiscard]] const ValueT* operator->() const noexcept { return m_ref; }
 
     //! Wait on a condition variable using this guard's lock and the given predicate.
     //!
@@ -110,9 +109,9 @@ class MutexGuard
 
   private:
     std::unique_lock<MutexImplT> m_lock;
-    std::reference_wrapper<ValueT> m_ref;
+    ValueT* m_ref;
 #ifdef RMX_ENABLE_POISONING
-    std::reference_wrapper<std::atomic<bool>> m_was_poisoned;
+    std::atomic<bool>* m_was_poisoned;
     int m_uncaught_at_entry;
 #endif
 };
