@@ -1,0 +1,3 @@
+InheritParentConfig: true
+CheckOptions:
+    - {key: bugprone-empty-catch.IgnoreCatchWithKeywords, value: '@expected'}

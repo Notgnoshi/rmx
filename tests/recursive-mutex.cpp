@@ -13,13 +13,13 @@ struct Dummy
 
 TEST_CASE("Use a std::recursive_mutex")
 {
-    rmx::Mutex<Dummy, std::recursive_mutex> mutex(42);
+    rmx::Mutex<Dummy, std::recursive_mutex> mutex(2);
 
     {
         INFO("Get constructed value");
         auto value = mutex.lock();
 
-        REQUIRE(value->get_value() == 42);
+        REQUIRE(value->get_value() == 2);
     }
 
     {

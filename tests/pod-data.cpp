@@ -11,13 +11,13 @@ struct Pod
 
 TEST_CASE("Pass a POD type")
 {
-    rmx::Mutex<Pod, std::mutex> mutex(Pod{42});
+    rmx::Mutex<Pod, std::mutex> mutex(Pod{2});
 
     {
         INFO("Get constructed value");
         auto value = mutex.lock();
 
-        REQUIRE(value->get_value() == 42);
+        REQUIRE(value->get_value() == 2);
     }
 
     {

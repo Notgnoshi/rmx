@@ -18,7 +18,7 @@ TEST_CASE("Detects exceptions while locked")
         *value = false;
     } catch (...)
     {
-        // ...
+        // @expected: the test deliberately threw above to drive the Mutex into poisoned state.
     }
 
     INFO("Throwing an exception while locked poisons the mutex");
