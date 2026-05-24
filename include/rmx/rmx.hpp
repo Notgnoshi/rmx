@@ -8,6 +8,14 @@
 #include <type_traits>
 #include <utility>
 
+#if defined(__GNUC__) || defined(__clang__)
+    #define RMX_INLINE [[gnu::always_inline]] inline
+#elif defined(_MSC_VER)
+    #define RMX_INLINE __forceinline
+#else
+    #define RMX_INLINE inline
+#endif
+
 namespace rmx {
 
 //! An RAII-style guard wrapping a reference to some type protected by a mutex
@@ -112,7 +120,7 @@ class Mutex
     //!
     //! @note Depending on the particular @p MutexImplT implementation, locking the mutex might
     //! throw an exception. For most mutexes, this won't throw.
-    [[nodiscard]] MutexGuard<ValueT, MutexImplT> lock_unchecked() noexcept
+    [[nodiscard]] RMX_INLINE MutexGuard<ValueT, MutexImplT> lock_unchecked() noexcept
     {
         std::unique_lock<MutexImplT> lock(m_mutex);
         return MutexGuard(m_value, std::move(lock), m_was_poisoned);
@@ -135,7 +143,8 @@ class Mutex
     //!
     //! @note Depending on the particular @p MutexImplT implementation, locking the mutex might
     //! throw an exception. For most mutexes, this won't throw.
-    [[nodiscard]] std::optional<MutexGuard<ValueT, MutexImplT>> try_lock_unchecked() noexcept
+    [[nodiscard]] RMX_INLINE std::optional<MutexGuard<ValueT, MutexImplT>>
+    try_lock_unchecked() noexcept
     {
         std::unique_lock<MutexImplT> maybe_lock(m_mutex, std::try_to_lock);
         if (maybe_lock)
@@ -147,7 +156,7 @@ class Mutex
     }
 
     //! Indicates whether this Mutex has been poisoned
-    [[nodiscard]] bool is_poisoned() noexcept
+    [[nodiscard]] RMX_INLINE bool is_poisoned() noexcept
     {
         return m_was_poisoned.load(std::memory_order_relaxed);
     }
@@ -157,7 +166,7 @@ class Mutex
     ValueT m_value;
     std::atomic<bool> m_was_poisoned{false};
 
-    void throw_if_poisoned() noexcept(false)
+    RMX_INLINE void throw_if_poisoned() noexcept(false)
     {
         if (is_poisoned())
         {
