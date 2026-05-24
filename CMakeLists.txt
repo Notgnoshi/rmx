@@ -16,6 +16,8 @@ include(GNUInstallDirs)
 option(RMX_ENABLE_WERROR "Treat warnings as errors when building rmx's own tests" ON)
 # Prevent including rmx in consuming project's installations.
 option(RMX_ENABLE_INSTALL "Generate install rules for rmx" ${PROJECT_IS_TOP_LEVEL})
+option(RMX_ENABLE_TSAN "Enable Thread Sanitizer and UBSan when building rmx's own tests" ON)
+option(RMX_ENABLE_ASAN "Enable Address Sanitizer and UBSan when building rmx's own tests" OFF)
 
 add_library(rmx INTERFACE)
 add_library(rmx::rmx ALIAS rmx)

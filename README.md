@@ -39,3 +39,9 @@ assert(mutex.is_poisoned());
     auto value = mutex.lock();
 }
 ```
+
+## Development Dependencies
+
+```sh
+sudo dnf install libasan libubsan libtsan compiler-rt
+```
