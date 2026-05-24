@@ -21,6 +21,19 @@
 
 namespace rmx {
 
+#ifdef RMX_ENABLE_POISONING
+//! Thrown by `Mutex::lock()` / `try_lock()` / `into_inner()` when the Mutex is poisoned.
+//!
+//! A Mutex is poisoned when an exception is thrown while the Mutex is locked, leaving the protected
+//! data in an indeterminate state. Recover via `clear_poison()`, or extract the value bypassing the
+//! check with `into_inner_unchecked()`.
+class Poisoned : public std::runtime_error
+{
+  public:
+    Poisoned() : std::runtime_error("Mutex poisoned: exception thrown while Mutex was locked") {}
+};
+#endif
+
 //! An RAII-style guard wrapping a reference to some type protected by a mutex
 //!
 //! Acquire a `MutexGuard` by locking a `Mutex`.
@@ -165,7 +178,7 @@ class Mutex
 #ifdef RMX_ENABLE_POISONING
         if (is_poisoned())
         {
-            throw std::runtime_error("Mutex poisoned: exception thrown while Mutex was locked");
+            throw Poisoned();
         }
         return MutexGuard<ValueT, MutexImplT>(m_value, std::move(lock), m_was_poisoned);
 #else
@@ -204,7 +217,7 @@ class Mutex
 #ifdef RMX_ENABLE_POISONING
         if (is_poisoned())
         {
-            throw std::runtime_error("Mutex poisoned: exception thrown while Mutex was locked");
+            throw Poisoned();
         }
         return std::optional<MutexGuard<ValueT, MutexImplT>>(
             std::in_place, m_value, std::move(lock), m_was_poisoned);
@@ -252,7 +265,7 @@ class Mutex
 #ifdef RMX_ENABLE_POISONING
         if (is_poisoned())
         {
-            throw std::runtime_error("Mutex poisoned: exception thrown while Mutex was locked");
+            throw Poisoned();
         }
 #endif
         return std::move(m_value);
@@ -271,7 +284,7 @@ class Mutex
 
 #ifdef RMX_ENABLE_POISONING
     //! Indicates whether this Mutex has been poisoned
-    [[nodiscard]] RMX_INLINE bool is_poisoned() noexcept
+    [[nodiscard]] RMX_INLINE bool is_poisoned() const noexcept
     {
         return m_was_poisoned.load(std::memory_order_relaxed);
     }

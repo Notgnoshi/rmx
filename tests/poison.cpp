@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/matchers/catch_matchers.hpp>
 #include <rmx/rmx.hpp>
 
 #include <stdexcept>
@@ -36,8 +35,7 @@ TEST_CASE("Detects exceptions while locked")
 
     {
         INFO("lock() does throw");
-        REQUIRE_THROWS_WITH(mutex.lock(),
-                            "Mutex poisoned: exception thrown while Mutex was locked");
+        REQUIRE_THROWS_AS(mutex.lock(), rmx::Poisoned);
     }
 }
 
@@ -137,7 +135,7 @@ TEST_CASE("into_inner() throws on a poisoned Mutex")
     {
         // @expected: deliberate throw to poison the mutex.
     }
-    REQUIRE_THROWS_AS(std::move(mutex).into_inner(), std::runtime_error);
+    REQUIRE_THROWS_AS(std::move(mutex).into_inner(), rmx::Poisoned);
 }
 
 TEST_CASE("into_inner_unchecked() yields the value even from a poisoned Mutex")

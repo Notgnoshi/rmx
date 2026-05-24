@@ -54,6 +54,12 @@ static_assert(
 static_assert(!noexcept(std::declval<rmx::Mutex<int, std::timed_mutex>&>().try_lock_unchecked()));
 static_assert(!noexcept(std::declval<rmx::Mutex<int, std::shared_mutex>&>().try_lock_unchecked()));
 
+// is_poisoned() is callable on a const Mutex&.
+static_assert(noexcept(std::declval<const rmx::Mutex<int>&>().is_poisoned()));
+
+// Poisoned inherits std::runtime_error so callers can catch via the standard hierarchy.
+static_assert(std::is_base_of_v<std::runtime_error, rmx::Poisoned>);
+
 // Construction.
 //
 // The forwarding ctor uses paren-init for constructible types and brace-init only as a fallback
