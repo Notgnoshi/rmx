@@ -1,4 +1,5 @@
 #pragma once
+#include <atomic>
 #include <exception>
 #include <functional>
 #include <mutex>
@@ -20,7 +21,7 @@ class MutexGuard
   public:
     explicit MutexGuard(ValueT& value_ref,
                         std::unique_lock<MutexImplT>&& lock,
-                        bool& was_poisoned) noexcept :
+                        std::atomic<bool>& was_poisoned) noexcept :
         m_lock(std::move(lock)), m_ref(value_ref), m_was_poisoned(was_poisoned)
     {
     }
@@ -39,7 +40,7 @@ class MutexGuard
         {
             // TODO: A possible enhancement is to stash the thread::id or possibly the
             // exception.what() so that it can be referenced in the poison exception.
-            m_was_poisoned.get() = true;
+            m_was_poisoned.get().store(true, std::memory_order_relaxed);
         }
     }
 
@@ -65,7 +66,7 @@ class MutexGuard
   private:
     std::unique_lock<MutexImplT> m_lock;
     std::reference_wrapper<ValueT> m_ref;
-    std::reference_wrapper<bool> m_was_poisoned;
+    std::reference_wrapper<std::atomic<bool>> m_was_poisoned;
 };
 
 //! A Rust-inspired mutex that wraps some other type.
@@ -146,12 +147,15 @@ class Mutex
     }
 
     //! Indicates whether this Mutex has been poisoned
-    [[nodiscard]] bool is_poisoned() noexcept { return m_was_poisoned; }
+    [[nodiscard]] bool is_poisoned() noexcept
+    {
+        return m_was_poisoned.load(std::memory_order_relaxed);
+    }
 
   private:
     MutexImplT m_mutex;
     ValueT m_value;
-    bool m_was_poisoned = false;
+    std::atomic<bool> m_was_poisoned{false};
 
     void throw_if_poisoned() noexcept(false)
     {
