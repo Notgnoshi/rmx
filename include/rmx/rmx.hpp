@@ -238,6 +238,37 @@ class Mutex
         return std::nullopt;
     }
 
+    //! Consume the Mutex and move out the wrapped value.
+    //!
+    //! The caller must ensure exclusive ownership: no other thread may access the Mutex concurrent
+    //! with or after this call. The `&&` qualifier signals this intent but cannot enforce it
+    //! against `std::move`.
+    //!
+    //! @throws std::runtime_error if the Mutex is poisoned. Use into_inner_unchecked() to extract
+    //! the value despite poison.
+    [[nodiscard]] ValueT into_inner() &&
+    {
+        std::unique_lock<MutexImplT> lock(m_mutex);
+#ifdef RMX_ENABLE_POISONING
+        if (is_poisoned())
+        {
+            throw std::runtime_error("Mutex poisoned: exception thrown while Mutex was locked");
+        }
+#endif
+        return std::move(m_value);
+    }
+
+    //! Consume the Mutex and move out the wrapped value, ignoring any poison state.
+    //!
+    //! Same exclusive-ownership requirement as @c into_inner.
+    [[nodiscard]] ValueT into_inner_unchecked() && noexcept(
+        std::is_nothrow_constructible_v<std::unique_lock<MutexImplT>, MutexImplT&> &&
+        std::is_nothrow_move_constructible_v<ValueT>)
+    {
+        std::unique_lock<MutexImplT> lock(m_mutex);
+        return std::move(m_value);
+    }
+
 #ifdef RMX_ENABLE_POISONING
     //! Indicates whether this Mutex has been poisoned
     [[nodiscard]] RMX_INLINE bool is_poisoned() noexcept

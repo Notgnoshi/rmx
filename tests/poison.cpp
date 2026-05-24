@@ -117,3 +117,43 @@ TEST_CASE("clear_poison() lifts the poison and lets lock() succeed again")
     auto guard = mutex.lock();
     REQUIRE(*guard == 0);
 }
+
+TEST_CASE("into_inner() consumes the Mutex and yields the wrapped value")
+{
+    rmx::Mutex<int> mutex(3);
+    int value = std::move(mutex).into_inner();
+    REQUIRE(value == 3);
+}
+
+TEST_CASE("into_inner() throws on a poisoned Mutex")
+{
+    rmx::Mutex<int> mutex(0);
+    try
+    {
+        auto guard = mutex.lock();
+        *guard = 1;
+        throw std::runtime_error("test");
+    } catch (...)
+    {
+        // @expected: deliberate throw to poison the mutex.
+    }
+    REQUIRE_THROWS_AS(std::move(mutex).into_inner(), std::runtime_error);
+}
+
+TEST_CASE("into_inner_unchecked() yields the value even from a poisoned Mutex")
+{
+    rmx::Mutex<int> mutex(0);
+    try
+    {
+        auto guard = mutex.lock();
+        *guard = 4;
+        throw std::runtime_error("test");
+    } catch (...)
+    {
+        // @expected: deliberate throw to poison the mutex.
+    }
+    REQUIRE(mutex.is_poisoned());
+
+    int value = std::move(mutex).into_inner_unchecked();
+    REQUIRE(value == 4);
+}
