@@ -244,6 +244,12 @@ class Mutex
     {
         return m_was_poisoned.load(std::memory_order_relaxed);
     }
+
+    //! Clear the poison flag, allowing subsequent `lock()` calls to succeed.
+    RMX_INLINE void clear_poison() noexcept
+    {
+        m_was_poisoned.store(false, std::memory_order_relaxed);
+    }
 #endif
 
   private:

@@ -91,3 +91,29 @@ TEST_CASE("Guard constructed during stack unwinding does not falsely poison")
     REQUIRE_FALSE(mutex.is_poisoned());
     REQUIRE(*mutex.lock() == 2);
 }
+
+TEST_CASE("clear_poison() lifts the poison and lets lock() succeed again")
+{
+    rmx::Mutex<int> mutex(0);
+
+    try
+    {
+        auto guard = mutex.lock();
+        *guard = 1;
+        throw std::runtime_error("test");
+    } catch (...)
+    {
+        // @expected: deliberate throw to poison the mutex.
+    }
+    REQUIRE(mutex.is_poisoned());
+
+    {
+        auto guard = mutex.lock_unchecked();
+        *guard = 0;
+        mutex.clear_poison();
+    }
+    REQUIRE_FALSE(mutex.is_poisoned());
+
+    auto guard = mutex.lock();
+    REQUIRE(*guard == 0);
+}
