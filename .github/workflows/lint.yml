@@ -18,3 +18,19 @@ jobs:
                   git ls-files '*.hpp' '*.cpp' | xargs clang-format -i
                   git ls-files '*.cmake' '*CMakeLists.txt' '*.cmake.in' | xargs cmake-format -i
                   git diff --exit-code
+
+    clang-tidy:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - name: Install clang-tidy
+              run: sudo apt-get update && sudo apt-get install -y clang-tidy
+            - name: Cache Catch2 sources
+              uses: actions/cache@v4
+              with:
+                  path: build/_deps/catch2-src
+                  key: catch2-${{ hashFiles('cmake/FindCatch2.cmake') }}
+            - name: Configure
+              run: cmake -S . -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DRMX_ENABLE_TSAN=OFF
+            - name: clang-tidy
+              run: clang-tidy -p build --header-filter='.*/include/rmx/.*' tests/*.cpp
