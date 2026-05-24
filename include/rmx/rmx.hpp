@@ -12,6 +12,8 @@ namespace rmx {
 //! An RAII-style guard wrapping a reference to some type protected by a mutex
 //!
 //! Acquire a `MutexGuard` by locking a `Mutex`.
+//!
+//! @note `MutexGuard` represents a locked `Mutex`, so it is neither movable nor copyable.
 template<typename ValueT, typename MutexImplT>
 class MutexGuard
 {
@@ -23,17 +25,15 @@ class MutexGuard
     {
     }
 
-    explicit MutexGuard(MutexGuard&&) noexcept = default;
-    MutexGuard& operator=(MutexGuard&&) noexcept = default;
-
-    //! A MutexGuard represents a locked value, which means it's incorrect to copy it around.
     MutexGuard(const MutexGuard&) = delete;
     MutexGuard& operator=(const MutexGuard&) = delete;
+    MutexGuard(MutexGuard&&) = delete;
+    MutexGuard& operator=(MutexGuard&&) = delete;
 
     //! If this guard, which represents locked data, is destructed when an exception was thrown,
     //! then that means whatever transaction that was expected to be performed while it was locked,
     //! was unfinished, leaving the locked data in an indeterminate state.
-    virtual ~MutexGuard()
+    ~MutexGuard()
     {
         if (std::uncaught_exceptions() != 0)
         {
@@ -69,9 +69,13 @@ class MutexGuard
 };
 
 //! A Rust-inspired mutex that wraps some other type.
+//!
+//! @note `Mutex` is neither copyable nor movable.
 template<typename ValueT, typename MutexImplT = std::mutex>
 class Mutex
 {
+    static_assert(std::is_object_v<ValueT>, "rmx::Mutex must be able to take ownership of ValueT");
+
   public:
     //! Take ownership of an existing @p ValueT
     explicit Mutex(ValueT&& value) noexcept : m_value(std::move(value)) {}
@@ -84,6 +88,13 @@ class Mutex
     explicit Mutex(ArgsT&&... args) : m_value{std::forward<ArgsT>(args)...}
     {
     }
+
+    ~Mutex() = default;
+
+    Mutex(const Mutex&) = delete;
+    Mutex& operator=(const Mutex&) = delete;
+    Mutex(Mutex&&) = delete;
+    Mutex& operator=(Mutex&&) = delete;
 
     //! Lock the mutex and return an RAII guard controlling access to the underlying value
     //!
