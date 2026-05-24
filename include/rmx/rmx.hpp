@@ -30,7 +30,10 @@ class MutexGuard
     explicit MutexGuard(ValueT& value_ref,
                         std::unique_lock<MutexImplT>&& lock,
                         std::atomic<bool>& was_poisoned) noexcept :
-        m_lock(std::move(lock)), m_ref(value_ref), m_was_poisoned(was_poisoned)
+        m_lock(std::move(lock)),
+        m_ref(value_ref),
+        m_was_poisoned(was_poisoned),
+        m_uncaught_at_entry(std::uncaught_exceptions())
     {
     }
 
@@ -44,7 +47,7 @@ class MutexGuard
     //! was unfinished, leaving the locked data in an indeterminate state.
     ~MutexGuard()
     {
-        if (std::uncaught_exceptions() != 0)
+        if (std::uncaught_exceptions() > m_uncaught_at_entry)
         {
             // TODO: A possible enhancement is to stash the thread::id or possibly the
             // exception.what() so that it can be referenced in the poison exception.
@@ -75,6 +78,7 @@ class MutexGuard
     std::unique_lock<MutexImplT> m_lock;
     std::reference_wrapper<ValueT> m_ref;
     std::reference_wrapper<std::atomic<bool>> m_was_poisoned;
+    int m_uncaught_at_entry;
 };
 
 //! A Rust-inspired mutex that wraps some other type.
