@@ -1,0 +1,20 @@
+name: lint
+
+on:
+    push:
+        branches: [main]
+    pull_request:
+        branches: [main]
+
+jobs:
+    format:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - name: Install cmake-format
+              run: pip install cmakelang
+            - name: Format
+              run: |
+                  git ls-files '*.hpp' '*.cpp' | xargs clang-format -i
+                  git ls-files '*.cmake' '*CMakeLists.txt' '*.cmake.in' | xargs cmake-format -i
+                  git diff --exit-code
