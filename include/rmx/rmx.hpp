@@ -1,5 +1,6 @@
 #pragma once
 #include <atomic>
+#include <chrono>
 #include <exception>
 #include <functional>
 #include <mutex>
@@ -67,12 +68,31 @@ class MutexGuard
     [[nodiscard]] ValueT* operator->() noexcept { return &m_ref.get(); }
     [[nodiscard]] const ValueT* operator->() const noexcept { return &m_ref.get(); }
 
-    //! Provide access to the underlying std::unique_lock to facilitate use with
-    //! std::condition_variable::wait()
+    //! Wait on a condition variable using this guard's lock and the given predicate.
     //!
-    //! @warning It is incorrect to access the wrapped value if the inner lock has been manually
-    //! unlocked. Don't do that.
-    [[nodiscard]] std::unique_lock<MutexImplT>& inner() noexcept { return m_lock; }
+    //! @p CvT can be `std::condition_variable` or `std::condition_variable_any`. The predicate is
+    //! invoked with the lock held; it should return true to exit the wait.
+    template<typename CvT, typename PredT>
+    void wait(CvT& cv, PredT pred)
+    {
+        cv.wait(m_lock, std::move(pred));
+    }
+
+    //! Wait on a condition variable for up to @p timeout, returning false if the timeout fired
+    //! before the predicate became true.
+    template<typename CvT, typename RepT, typename PeriodT, typename PredT>
+    bool wait_for(CvT& cv, const std::chrono::duration<RepT, PeriodT>& timeout, PredT pred)
+    {
+        return cv.wait_for(m_lock, timeout, std::move(pred));
+    }
+
+    //! Wait on a condition variable until @p deadline, returning false if the deadline passed
+    //! before the predicate became true.
+    template<typename CvT, typename ClockT, typename DurationT, typename PredT>
+    bool wait_until(CvT& cv, const std::chrono::time_point<ClockT, DurationT>& deadline, PredT pred)
+    {
+        return cv.wait_until(m_lock, deadline, std::move(pred));
+    }
 
   private:
     std::unique_lock<MutexImplT> m_lock;
