@@ -28,7 +28,30 @@ target_include_directories(
 target_compile_features(rmx INTERFACE cxx_std_17)
 
 if(RMX_ENABLE_INSTALL)
+    include(CMakePackageConfigHelpers)
+
+    install(TARGETS rmx EXPORT rmxTargets)
     install(DIRECTORY include/rmx DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+    install(
+        EXPORT rmxTargets
+        FILE rmxTargets.cmake
+        NAMESPACE rmx::
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/rmx
+    )
+
+    configure_package_config_file(
+        cmake/rmxConfig.cmake.in ${CMAKE_CURRENT_BINARY_DIR}/rmxConfig.cmake
+        INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/rmx
+    )
+    write_basic_package_version_file(
+        ${CMAKE_CURRENT_BINARY_DIR}/rmxConfigVersion.cmake
+        VERSION ${PROJECT_VERSION}
+        COMPATIBILITY SameMajorVersion
+    )
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/rmxConfig.cmake
+                  ${CMAKE_CURRENT_BINARY_DIR}/rmxConfigVersion.cmake
+            DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/rmx
+    )
 endif()
 
 if(PROJECT_IS_TOP_LEVEL)
