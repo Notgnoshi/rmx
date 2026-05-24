@@ -119,8 +119,12 @@ class Mutex
     //! leaving the locked data in an indeterminate state.
     [[nodiscard]] MutexGuard<ValueT, MutexImplT> lock() noexcept(false)
     {
-        throw_if_poisoned();
-        return lock_unchecked();
+        std::unique_lock<MutexImplT> lock(m_mutex);  // TOCTOU: check for poisoning after lock
+        if (is_poisoned())
+        {
+            throw std::runtime_error("Mutex poisoned: exception thrown while Mutex was locked");
+        }
+        return MutexGuard<ValueT, MutexImplT>(m_value, std::move(lock), m_was_poisoned);
     }
 
     //! Lock the mutex and return an RAII guard controlling access to the underlying value
@@ -142,8 +146,17 @@ class Mutex
     //! leaving the locked data in an indeterminate state.
     [[nodiscard]] std::optional<MutexGuard<ValueT, MutexImplT>> try_lock() noexcept(false)
     {
-        throw_if_poisoned();
-        return try_lock_unchecked();
+        std::unique_lock<MutexImplT> lock(m_mutex, std::try_to_lock);
+        if (!lock)
+        {
+            return std::nullopt;
+        }
+        if (is_poisoned())
+        {
+            throw std::runtime_error("Mutex poisoned: exception thrown while Mutex was locked");
+        }
+        return std::optional<MutexGuard<ValueT, MutexImplT>>(
+            std::in_place, m_value, std::move(lock), m_was_poisoned);
     }
 
     //! Attempt to lock the mutex and return an RAII guard controlling access to the underlying
@@ -175,14 +188,6 @@ class Mutex
     MutexImplT m_mutex;
     ValueT m_value;
     std::atomic<bool> m_was_poisoned{false};
-
-    RMX_INLINE void throw_if_poisoned() noexcept(false)
-    {
-        if (is_poisoned())
-        {
-            throw std::runtime_error("Mutex poisoned: exception thrown while Mutex was locked");
-        }
-    }
 };
 
 }  // namespace rmx
