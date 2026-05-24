@@ -30,4 +30,14 @@ TEST_CASE("Use a std::recursive_mutex")
         REQUIRE((*value).value == 0);
         REQUIRE(value->value == 0);
     }
+
+    {
+        INFO("Recursive locks from the same thread succeed");
+        auto outer = mutex.lock();
+        {
+            auto inner = mutex.lock();
+            inner->set_value(3);
+        }
+        REQUIRE(outer->get_value() == 3);
+    }
 }
