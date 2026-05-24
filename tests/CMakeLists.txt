@@ -1,4 +1,5 @@
 find_package(Catch2 3 REQUIRED)
+include(Catch)
 
 add_executable(rmx-tests)
 
@@ -11,3 +12,4 @@ file(
 target_sources(rmx-tests PRIVATE "${RMX_TEST_SOURCES}")
 
 target_link_libraries(rmx-tests PRIVATE rmx Catch2::Catch2WithMain)
+catch_discover_tests(rmx-tests)
