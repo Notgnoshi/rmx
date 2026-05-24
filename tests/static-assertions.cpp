@@ -1,6 +1,7 @@
 #include <rmx/rmx.hpp>
 
 #include <mutex>
+#include <shared_mutex>
 #include <type_traits>
 #include <vector>
 
@@ -30,5 +31,21 @@ static_assert(!std::is_copy_assignable_v<guard_for<int>>);
 static_assert(!std::is_move_constructible_v<guard_for<int>>);
 static_assert(!std::is_move_assignable_v<guard_for<int>>);
 static_assert(std::is_destructible_v<guard_for<int>>);
+
+// noexcept behavior.
+//
+// Mutex(ValueT&&) is noexcept iff ValueT's move ctor is noexcept. int qualifies.
+static_assert(noexcept(rmx::Mutex<int>(0)));
+
+static_assert(!noexcept(std::declval<rmx::Mutex<int, std::mutex>&>().lock_unchecked()));
+static_assert(!noexcept(std::declval<rmx::Mutex<int, std::recursive_mutex>&>().lock_unchecked()));
+static_assert(!noexcept(std::declval<rmx::Mutex<int, std::timed_mutex>&>().lock_unchecked()));
+static_assert(!noexcept(std::declval<rmx::Mutex<int, std::shared_mutex>&>().lock_unchecked()));
+
+static_assert(!noexcept(std::declval<rmx::Mutex<int, std::mutex>&>().try_lock_unchecked()));
+static_assert(
+    !noexcept(std::declval<rmx::Mutex<int, std::recursive_mutex>&>().try_lock_unchecked()));
+static_assert(!noexcept(std::declval<rmx::Mutex<int, std::timed_mutex>&>().try_lock_unchecked()));
+static_assert(!noexcept(std::declval<rmx::Mutex<int, std::shared_mutex>&>().try_lock_unchecked()));
 
 }  // namespace

@@ -91,7 +91,10 @@ class Mutex
 
   public:
     //! Take ownership of an existing @p ValueT
-    explicit Mutex(ValueT&& value) noexcept : m_value(std::move(value)) {}
+    explicit Mutex(ValueT&& value) noexcept(std::is_nothrow_move_constructible_v<ValueT>) :
+        m_value(std::move(value))
+    {
+    }
 
     //! Construct a new @p ValueT from the given args, includes default constructor
     //!
@@ -122,9 +125,10 @@ class Mutex
 
     //! Lock the mutex and return an RAII guard controlling access to the underlying value
     //!
-    //! @note Depending on the particular @p MutexImplT implementation, locking the mutex might
-    //! throw an exception. For most mutexes, this won't throw.
-    [[nodiscard]] RMX_INLINE MutexGuard<ValueT, MutexImplT> lock_unchecked() noexcept
+    //! @note `noexcept` iff constructing a `std::unique_lock<MutexImplT>` from the underlying
+    //! mutex is `noexcept`.
+    [[nodiscard]] RMX_INLINE MutexGuard<ValueT, MutexImplT> lock_unchecked() noexcept(
+        std::is_nothrow_constructible_v<std::unique_lock<MutexImplT>, MutexImplT&>)
     {
         std::unique_lock<MutexImplT> lock(m_mutex);
         return MutexGuard(m_value, std::move(lock), m_was_poisoned);
@@ -145,10 +149,12 @@ class Mutex
     //! Attempt to lock the mutex and return an RAII guard controlling access to the underlying
     //! value
     //!
-    //! @note Depending on the particular @p MutexImplT implementation, locking the mutex might
-    //! throw an exception. For most mutexes, this won't throw.
+    //! @note `noexcept` iff constructing a `std::unique_lock<MutexImplT>` from the underlying
+    //! mutex with `std::try_to_lock` is `noexcept`.
     [[nodiscard]] RMX_INLINE std::optional<MutexGuard<ValueT, MutexImplT>>
-    try_lock_unchecked() noexcept
+    try_lock_unchecked() noexcept(std::is_nothrow_constructible_v<std::unique_lock<MutexImplT>,
+                                                                  MutexImplT&,
+                                                                  std::try_to_lock_t>)
     {
         std::unique_lock<MutexImplT> maybe_lock(m_mutex, std::try_to_lock);
         if (maybe_lock)
