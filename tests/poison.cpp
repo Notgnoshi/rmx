@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers.hpp>
 #include <rmx/rmx.hpp>
 
 TEST_CASE("Detects exceptions while locked")
@@ -33,6 +34,7 @@ TEST_CASE("Detects exceptions while locked")
 
     {
         INFO("lock() does throw");
-        REQUIRE_THROWS(mutex.lock(), "Mutex poisoned: exception thrown while Mutex was locked");
+        REQUIRE_THROWS_WITH(mutex.lock(),
+                            "Mutex poisoned: exception thrown while Mutex was locked");
     }
 }
