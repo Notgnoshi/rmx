@@ -13,6 +13,8 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 include(GNUInstallDirs)
 
+option(RMX_ENABLE_WERROR "Treat warnings as errors when building rmx's own tests" ON)
+
 add_library(rmx INTERFACE)
 target_include_directories(
     rmx INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
