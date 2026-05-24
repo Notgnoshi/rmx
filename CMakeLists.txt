@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.28)
+cmake_minimum_required(VERSION 3.21)
 
 project(
     rmx
@@ -18,6 +18,7 @@ option(RMX_ENABLE_WERROR "Treat warnings as errors when building rmx's own tests
 option(RMX_ENABLE_INSTALL "Generate install rules for rmx" ${PROJECT_IS_TOP_LEVEL})
 option(RMX_ENABLE_TSAN "Enable Thread Sanitizer and UBSan when building rmx's own tests" ON)
 option(RMX_ENABLE_ASAN "Enable Address Sanitizer and UBSan when building rmx's own tests" OFF)
+option(RMX_ENABLE_POISONING "Enable Mutex poisoning when an exception unwinds a locked guard" ON)
 
 add_library(rmx INTERFACE)
 add_library(rmx::rmx ALIAS rmx)
@@ -26,6 +27,7 @@ target_include_directories(
                   $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 target_compile_features(rmx INTERFACE cxx_std_17)
+target_compile_definitions(rmx INTERFACE $<$<BOOL:${RMX_ENABLE_POISONING}>:RMX_ENABLE_POISONING>)
 
 if(RMX_ENABLE_INSTALL)
     include(CMakePackageConfigHelpers)

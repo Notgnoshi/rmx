@@ -1,13 +1,16 @@
 #pragma once
-#include <atomic>
 #include <chrono>
-#include <exception>
 #include <functional>
 #include <mutex>
 #include <optional>
-#include <stdexcept>
 #include <type_traits>
 #include <utility>
+
+#ifdef RMX_ENABLE_POISONING
+    #include <atomic>
+    #include <exception>
+    #include <stdexcept>
+#endif
 
 #if defined(__GNUC__) || defined(__clang__)
     #define RMX_INLINE [[gnu::always_inline]] inline
@@ -29,12 +32,19 @@ class MutexGuard
 {
   public:
     explicit MutexGuard(ValueT& value_ref,
-                        std::unique_lock<MutexImplT>&& lock,
-                        std::atomic<bool>& was_poisoned) noexcept :
+                        std::unique_lock<MutexImplT>&& lock
+#ifdef RMX_ENABLE_POISONING
+                        ,
+                        std::atomic<bool>& was_poisoned
+#endif
+                        ) noexcept :
         m_lock(std::move(lock)),
-        m_ref(value_ref),
+        m_ref(value_ref)
+#ifdef RMX_ENABLE_POISONING
+        ,
         m_was_poisoned(was_poisoned),
         m_uncaught_at_entry(std::uncaught_exceptions())
+#endif
     {
     }
 
@@ -43,6 +53,7 @@ class MutexGuard
     MutexGuard(MutexGuard&&) = delete;
     MutexGuard& operator=(MutexGuard&&) = delete;
 
+#ifdef RMX_ENABLE_POISONING
     //! If this guard, which represents locked data, is destructed when an exception was thrown,
     //! then that means whatever transaction that was expected to be performed while it was locked,
     //! was unfinished, leaving the locked data in an indeterminate state.
@@ -55,6 +66,9 @@ class MutexGuard
             m_was_poisoned.get().store(true, std::memory_order_relaxed);
         }
     }
+#else
+    ~MutexGuard() = default;
+#endif
 
     //! Access the underlying value by reference
     //!
@@ -97,8 +111,10 @@ class MutexGuard
   private:
     std::unique_lock<MutexImplT> m_lock;
     std::reference_wrapper<ValueT> m_ref;
+#ifdef RMX_ENABLE_POISONING
     std::reference_wrapper<std::atomic<bool>> m_was_poisoned;
     int m_uncaught_at_entry;
+#endif
 };
 
 //! A Rust-inspired mutex that wraps some other type.
@@ -147,11 +163,15 @@ class Mutex
     [[nodiscard]] MutexGuard<ValueT, MutexImplT> lock() noexcept(false)
     {
         std::unique_lock<MutexImplT> lock(m_mutex);  // TOCTOU: check for poisoning after lock
+#ifdef RMX_ENABLE_POISONING
         if (is_poisoned())
         {
             throw std::runtime_error("Mutex poisoned: exception thrown while Mutex was locked");
         }
         return MutexGuard<ValueT, MutexImplT>(m_value, std::move(lock), m_was_poisoned);
+#else
+        return MutexGuard<ValueT, MutexImplT>(m_value, std::move(lock));
+#endif
     }
 
     //! Lock the mutex and return an RAII guard controlling access to the underlying value
@@ -162,7 +182,11 @@ class Mutex
         std::is_nothrow_constructible_v<std::unique_lock<MutexImplT>, MutexImplT&>)
     {
         std::unique_lock<MutexImplT> lock(m_mutex);
+#ifdef RMX_ENABLE_POISONING
         return MutexGuard(m_value, std::move(lock), m_was_poisoned);
+#else
+        return MutexGuard(m_value, std::move(lock));
+#endif
     }
 
     //! Attempt to lock the mutex and return an RAII guard controlling access to the underlying
@@ -178,12 +202,17 @@ class Mutex
         {
             return std::nullopt;
         }
+#ifdef RMX_ENABLE_POISONING
         if (is_poisoned())
         {
             throw std::runtime_error("Mutex poisoned: exception thrown while Mutex was locked");
         }
         return std::optional<MutexGuard<ValueT, MutexImplT>>(
             std::in_place, m_value, std::move(lock), m_was_poisoned);
+#else
+        return std::optional<MutexGuard<ValueT, MutexImplT>>(
+            std::in_place, m_value, std::move(lock));
+#endif
     }
 
     //! Attempt to lock the mutex and return an RAII guard controlling access to the underlying
@@ -199,22 +228,31 @@ class Mutex
         std::unique_lock<MutexImplT> maybe_lock(m_mutex, std::try_to_lock);
         if (maybe_lock)
         {
+#ifdef RMX_ENABLE_POISONING
             return std::optional<MutexGuard<ValueT, MutexImplT>>(
                 std::in_place, m_value, std::move(maybe_lock), m_was_poisoned);
+#else
+            return std::optional<MutexGuard<ValueT, MutexImplT>>(
+                std::in_place, m_value, std::move(maybe_lock));
+#endif
         }
         return std::nullopt;
     }
 
+#ifdef RMX_ENABLE_POISONING
     //! Indicates whether this Mutex has been poisoned
     [[nodiscard]] RMX_INLINE bool is_poisoned() noexcept
     {
         return m_was_poisoned.load(std::memory_order_relaxed);
     }
+#endif
 
   private:
     MutexImplT m_mutex;
     ValueT m_value;
+#ifdef RMX_ENABLE_POISONING
     std::atomic<bool> m_was_poisoned{false};
+#endif
 };
 
 // Deduction guide: `rmx::Mutex(value)` deduces `Mutex<std::decay_t<decltype(value)>>`.
