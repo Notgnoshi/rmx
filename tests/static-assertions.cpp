@@ -10,6 +10,12 @@ namespace {
 template<typename ValueT>
 using guard_for = rmx::MutexGuard<ValueT, std::mutex>;
 
+struct Aggregate
+{
+    int a;
+    int b;
+};
+
 // Mutex<T>: not copyable, not movable, destructible.
 
 static_assert(!std::is_copy_constructible_v<rmx::Mutex<int>>);
@@ -47,5 +53,16 @@ static_assert(
     !noexcept(std::declval<rmx::Mutex<int, std::recursive_mutex>&>().try_lock_unchecked()));
 static_assert(!noexcept(std::declval<rmx::Mutex<int, std::timed_mutex>&>().try_lock_unchecked()));
 static_assert(!noexcept(std::declval<rmx::Mutex<int, std::shared_mutex>&>().try_lock_unchecked()));
+
+// Construction.
+//
+// The forwarding ctor uses paren-init for constructible types and brace-init only as a fallback
+// for aggregates.
+static_assert(std::is_constructible_v<rmx::Mutex<int>>);
+static_assert(std::is_constructible_v<rmx::Mutex<int>, int>);
+static_assert(std::is_constructible_v<rmx::Mutex<std::vector<int>>, int>);
+static_assert(std::is_constructible_v<rmx::Mutex<std::vector<int>>, std::size_t, int>);
+static_assert(std::is_constructible_v<rmx::Mutex<Aggregate>>);
+static_assert(std::is_constructible_v<rmx::Mutex<Aggregate>, int, int>);
 
 }  // namespace

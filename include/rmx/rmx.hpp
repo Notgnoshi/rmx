@@ -90,18 +90,25 @@ class Mutex
     static_assert(std::is_object_v<ValueT>, "rmx::Mutex must be able to take ownership of ValueT");
 
   public:
-    //! Take ownership of an existing @p ValueT
-    explicit Mutex(ValueT&& value) noexcept(std::is_nothrow_move_constructible_v<ValueT>) :
-        m_value(std::move(value))
+    //! Construct a new @p ValueT from the given args
+    //!
+    //! Passing an rvalue reference will take ownership of an existing value.
+    template<typename... ArgsT,
+             typename std::enable_if_t<std::is_constructible_v<ValueT, ArgsT...>, bool> = true>
+    explicit Mutex(ArgsT&&... args) noexcept(std::is_nothrow_constructible_v<ValueT, ArgsT...>) :
+        m_value(std::forward<ArgsT>(args)...)
     {
     }
 
-    //! Construct a new @p ValueT from the given args, includes default constructor
+    //! Aggregate-initialize a new @p ValueT from the given args
     //!
-    //! @note POD types need to have a constructor or be passed directly.
+    //! Only selected for aggregate types when no matching constructor exists.
     template<typename... ArgsT,
-             typename std::enable_if_t<std::is_constructible_v<ValueT, ArgsT...>, bool> = true>
-    explicit Mutex(ArgsT&&... args) : m_value{std::forward<ArgsT>(args)...}
+             typename std::enable_if_t<!std::is_constructible_v<ValueT, ArgsT...> &&
+                                           std::is_aggregate_v<ValueT>,
+                                       bool> = true>
+    explicit Mutex(ArgsT&&... args) noexcept(noexcept(ValueT{std::forward<ArgsT>(args)...})) :
+        m_value{std::forward<ArgsT>(args)...}
     {
     }
 
@@ -189,5 +196,9 @@ class Mutex
     ValueT m_value;
     std::atomic<bool> m_was_poisoned{false};
 };
+
+// Deduction guide: `rmx::Mutex(value)` deduces `Mutex<std::decay_t<decltype(value)>>`.
+template<typename ValueT>
+Mutex(ValueT&&) -> Mutex<std::decay_t<ValueT>>;
 
 }  // namespace rmx
