@@ -15,8 +15,8 @@ TEST_CASE("Detects exceptions while locked")
 
         throw std::runtime_error("Throwing an exception while the Mutex is locked");
 
-        // This important part of the transaction was skipped!
-        *value = false;
+        // Pretend there's super important code here that's an invariant that the transaction
+        // requires to be successful.
     } catch (...)
     {
         // @expected: the test deliberately threw above to drive the Mutex into poisoned state.
