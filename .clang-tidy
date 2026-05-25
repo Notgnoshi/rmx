@@ -6,8 +6,13 @@ Checks: >
     performance-*,
     readability-*,
     -modernize-use-trailing-return-type,
+    -readability-identifier-length,
+
+# Avoid clang errors when clang-tidy parses GCC-only warning flags from compile_commands.json.
+ExtraArgsBefore: [-Wno-unknown-warning-option]
 
 CheckOptions:
+    - {key: cppcoreguidelines-avoid-do-while.IgnoreMacros,         value: 'true'}
     - {key: readability-identifier-naming.NamespaceCase,           value: lower_case}
     - {key: readability-identifier-naming.ClassCase,               value: CamelCase}
     # - {key: readability-identifier-naming.ClassSuffix,             value: _t}

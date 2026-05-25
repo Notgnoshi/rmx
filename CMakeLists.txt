@@ -1,8 +1,8 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.21)
 
 project(
     rmx
-    VERSION 0.1.0
+    VERSION 0.2.0
     LANGUAGES CXX
 )
 set(CMAKE_CXX_STANDARD 17)
@@ -13,26 +13,52 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 include(GNUInstallDirs)
 
-# A CMake 3.16 version of https://cmake.org/cmake/help/latest/variable/PROJECT_IS_TOP_LEVEL.html
-set(RMX_IS_MAIN_PROJECT OFF)
-if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
-    message(STATUS "rmx is the top-level project")
-    set(RMX_IS_MAIN_PROJECT ON)
-endif()
-
-option(RMX_BUILD_TESTS "Enable building the project tests" ${RMX_IS_MAIN_PROJECT})
-# TODO: Maybe longer-running fuzz tests?
+option(RMX_ENABLE_WERROR "Treat warnings as errors when building rmx's own tests" ON)
+# Prevent including rmx in consuming project's installations.
+option(RMX_ENABLE_INSTALL "Generate install rules for rmx" ${PROJECT_IS_TOP_LEVEL})
+option(RMX_ENABLE_TSAN "Enable Thread Sanitizer and UBSan when building rmx's own tests" ON)
+option(RMX_ENABLE_ASAN "Enable Address Sanitizer and UBSan when building rmx's own tests" OFF)
+option(RMX_ENABLE_POISONING "Enable Mutex poisoning when an exception unwinds a locked guard" ON)
 
 add_library(rmx INTERFACE)
+add_library(rmx::rmx ALIAS rmx)
 target_include_directories(
     rmx INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
                   $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 target_compile_features(rmx INTERFACE cxx_std_17)
-install(DIRECTORY include/rmx DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+target_compile_definitions(rmx INTERFACE $<$<BOOL:${RMX_ENABLE_POISONING}>:RMX_ENABLE_POISONING>)
 
-if(RMX_BUILD_TESTS)
-    message(STATUS "Building rmx tests")
-    enable_testing()
-    add_subdirectory(tests)
+if(RMX_ENABLE_INSTALL)
+    include(CMakePackageConfigHelpers)
+
+    install(TARGETS rmx EXPORT rmxTargets)
+    install(DIRECTORY include/rmx DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+    install(
+        EXPORT rmxTargets
+        FILE rmxTargets.cmake
+        NAMESPACE rmx::
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/rmx
+    )
+
+    configure_package_config_file(
+        cmake/rmxConfig.cmake.in ${CMAKE_CURRENT_BINARY_DIR}/rmxConfig.cmake
+        INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/rmx
+    )
+    write_basic_package_version_file(
+        ${CMAKE_CURRENT_BINARY_DIR}/rmxConfigVersion.cmake
+        VERSION ${PROJECT_VERSION}
+        COMPATIBILITY SameMajorVersion
+    )
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/rmxConfig.cmake
+                  ${CMAKE_CURRENT_BINARY_DIR}/rmxConfigVersion.cmake
+            DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/rmx
+    )
+endif()
+
+if(PROJECT_IS_TOP_LEVEL)
+    include(CTest)
+    if(BUILD_TESTING)
+        add_subdirectory(tests)
+    endif()
 endif()

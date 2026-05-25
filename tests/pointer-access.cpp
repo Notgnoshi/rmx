@@ -26,9 +26,9 @@ TEST_CASE("Pointer access for a more sophisticated type")
     {
         INFO("Set value through operator->()");
         auto value = mutex.lock();
-        value->set_value(42);
+        value->set_value(2);
 
-        REQUIRE((*value).value == 42);
-        REQUIRE(value->value == 42);
+        REQUIRE((*value).value == 2);
+        REQUIRE(value->value == 2);
     }
 }

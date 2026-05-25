@@ -2,6 +2,8 @@
 
 Rust-style mutex for C++17
 
+## API showcase
+
 ```cpp
 #include <rmx/rmx.hpp>
 
@@ -39,3 +41,31 @@ assert(mutex.is_poisoned());
     auto value = mutex.lock();
 }
 ```
+
+## Developer info
+
+Install the sanitizer dependencies. You can opt out of sanitizers with the `RMX_ENABLE_ASAN` and
+`RMX_ENABLE_TSAN` CMake options.
+
+```sh
+sudo dnf install libasan libubsan libtsan
+```
+
+Build, test, lint, and format with
+
+```sh
+cmake -B ./build/
+cmake --build ./build/
+run-clang-tidy -p ./build/ '/(tests|include)/'
+git ls-files '*.hpp' '*.cpp' | xargs clang-format -i
+```
+
+Run the tests with
+
+```sh
+ctest --test-dir ./build/
+```
+
+Note that the testing philosophy is to trust that `std::mutex` is correct. Since `rmx::Mutex` is
+really just a wrapper type that defers synchronization to the C++ standard library, the tests are
+largely single-threaded, and designed around checking that the `rmx::Mutex` API works as expected.

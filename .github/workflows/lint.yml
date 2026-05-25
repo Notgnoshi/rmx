@@ -1,0 +1,72 @@
+name: lint
+
+on:
+    push:
+        branches: [main]
+    pull_request:
+        branches: [main]
+
+jobs:
+    format:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - name: Install cmake-format
+              run: pip install cmakelang
+            - name: Format
+              run: |
+                  git ls-files '*.hpp' '*.cpp' | xargs clang-format -i
+                  git ls-files '*.cmake' '*CMakeLists.txt' '*.cmake.in' | xargs cmake-format -i
+                  git diff --exit-code
+
+    clang-tidy:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - name: Install clang-tidy
+              run: sudo apt-get update && sudo apt-get install -y clang-tidy
+            - name: Cache Catch2 sources
+              uses: actions/cache@v4
+              with:
+                  path: build/_deps/catch2-src
+                  key: catch2-${{ hashFiles('cmake/FindCatch2.cmake') }}
+            - name: Configure
+              run: cmake -S . -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DRMX_ENABLE_TSAN=OFF
+            - name: clang-tidy
+              run: clang-tidy -p build --use-color --header-filter='.*/include/rmx/.*' tests/*.cpp
+
+    test:
+        name: ${{ matrix.name }}
+        runs-on: ${{ matrix.os }}
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - name: linux-gcc
+                      os: ubuntu-latest
+                      cmake_args: -DRMX_ENABLE_TSAN=OFF
+                    - name: linux-clang-tsan
+                      os: ubuntu-latest
+                      cmake_args: -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DRMX_ENABLE_TSAN=ON
+                    - name: linux-clang-asan
+                      os: ubuntu-latest
+                      cmake_args: -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DRMX_ENABLE_TSAN=OFF -DRMX_ENABLE_ASAN=ON
+                    - name: windows-msvc
+                      os: windows-latest
+                      cmake_args: -DRMX_ENABLE_TSAN=OFF
+        steps:
+            - uses: actions/checkout@v4
+            - name: Force colored compiler diagnostics
+              if: matrix.os == 'ubuntu-latest'
+              run: echo "CXXFLAGS=-fdiagnostics-color=always" >> $GITHUB_ENV
+            - name: Cache Catch2 sources
+              uses: actions/cache@v4
+              with:
+                  path: build/_deps/catch2-src
+                  key: catch2-${{ matrix.name }}-${{ hashFiles('cmake/FindCatch2.cmake') }}
+            - name: Configure
+              run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug ${{ matrix.cmake_args }}
+            - name: Build
+              run: cmake --build build --config Debug
+            - name: Test
+              run: ctest --test-dir build -C Debug --output-on-failure

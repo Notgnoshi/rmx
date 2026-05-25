@@ -40,6 +40,7 @@ TEST_CASE("Basic mutability and access")
         auto maybe_value = mutex.try_lock();
 
         REQUIRE(maybe_value.has_value());
+        // NOLINTNEXTLINE(bugprone-unchecked-optional-access): REQUIRE above aborts on failure.
         REQUIRE(*maybe_value.value() == false);
     }
 }
