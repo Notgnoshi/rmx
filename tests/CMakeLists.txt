@@ -23,4 +23,4 @@ target_link_libraries(
 if(RMX_ENABLE_WERROR)
     target_link_libraries(rmx-tests PRIVATE rmx-werror)
 endif()
-catch_discover_tests(rmx-tests)
+catch_discover_tests(rmx-tests EXTRA_ARGS --colour-mode=ansi)
